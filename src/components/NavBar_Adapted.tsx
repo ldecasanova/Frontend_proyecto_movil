@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React  from 'react';
 import { BottomNavigation } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 

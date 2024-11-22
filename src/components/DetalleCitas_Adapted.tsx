@@ -1,33 +1,71 @@
+// src/components/DetalleCitas.tsx
 
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
+import { StyleSheet, ScrollView } from 'react-native';
 import { Card, Text, Button, Snackbar, ActivityIndicator } from 'react-native-paper';
-import { useRoute, useNavigation } from '@react-navigation/native';
-import axios from 'axios';
+import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import api from '../api/axios_Adapted';
+
+// 1. Definir RootStackParamList dentro del mismo archivo
+type RootStackParamList = {
+  DetalleCitas: { id: string };
+  EditarCitas: { id: string };
+};
+
+// 2. Definir los tipos para useRoute y useNavigation
+type DetalleCitasRouteProp = RouteProp<RootStackParamList, 'DetalleCitas'>;
+type DetalleCitasNavigationProp = StackNavigationProp<RootStackParamList, 'DetalleCitas'>;
+
+// 3. Definir los tipos de datos recibidos de la API
+type Cita = {
+  motivo: string;
+  fechaCita: string;
+  veterinario: string;
+  estado: string;
+  animalId: string;
+};
+
+type Animal = {
+  nombre: string;
+  especie: string;
+  edad: string;
+  unidadEdad: string; // Asegúrate de que tu backend envía este campo
+  estadoSalud: string;
+  adoptanteId?: string;
+};
+
+type Adoptante = {
+  nombre: string;
+  id: string;
+};
 
 const DetalleCitas = () => {
-  const route = useRoute();
-  const navigation = useNavigation();
+  const route = useRoute<DetalleCitasRouteProp>();
+  const navigation = useNavigation<DetalleCitasNavigationProp>();
   const { id } = route.params;
 
-  const [cita, setCita] = useState(null);
-  const [animal, setAnimal] = useState(null);
-  const [adoptante, setAdoptante] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [cita, setCita] = useState<Cita | null>(null);
+  const [animal, setAnimal] = useState<Animal | null>(null);
+  const [adoptante, setAdoptante] = useState<Adoptante | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchDetallesCita = async () => {
       setLoading(true);
       try {
-        const citaRes = await axios.get(`http://localhost:8080/api/citas/${id}`);
+        // Obtener detalles de la cita
+        const citaRes = await api.get<Cita>(`/citas/${id}`);
         setCita(citaRes.data);
-        const animalRes = await axios.get(`http://localhost:8080/api/animales/${citaRes.data.animalId}`);
+
+        // Obtener detalles del animal asociado
+        const animalRes = await api.get<Animal>(`/animales/${citaRes.data.animalId}`);
         setAnimal(animalRes.data);
+
+        // Si el animal tiene un adoptante, obtener sus detalles
         if (animalRes.data.adoptanteId) {
-          const adoptanteRes = await axios.get(
-            `http://localhost:8080/api/adoptantes/${animalRes.data.adoptanteId}`
-          );
+          const adoptanteRes = await api.get<Adoptante>(`/adoptantes/${animalRes.data.adoptanteId}`);
           setAdoptante(adoptanteRes.data);
         }
       } catch (error) {
@@ -51,10 +89,18 @@ const DetalleCitas = () => {
             <Card style={styles.card}>
               <Card.Title title="Detalles de la Cita" />
               <Card.Content>
-                <Text>Motivo: {cita.motivo}</Text>
-                <Text>Fecha: {cita.fechaCita}</Text>
-                <Text>Veterinario: {cita.veterinario}</Text>
-                <Text>Estado: {cita.estado}</Text>
+                <Text style={styles.text}>
+                  <Text style={styles.bold}>Motivo:</Text> {cita.motivo}
+                </Text>
+                <Text style={styles.text}>
+                  <Text style={styles.bold}>Fecha:</Text> {new Date(cita.fechaCita).toLocaleDateString()}
+                </Text>
+                <Text style={styles.text}>
+                  <Text style={styles.bold}>Veterinario:</Text> {cita.veterinario}
+                </Text>
+                <Text style={styles.text}>
+                  <Text style={styles.bold}>Estado:</Text> {cita.estado}
+                </Text>
               </Card.Content>
             </Card>
           )}
@@ -62,10 +108,18 @@ const DetalleCitas = () => {
             <Card style={styles.card}>
               <Card.Title title="Detalles del Animal" />
               <Card.Content>
-                <Text>Nombre: {animal.nombre}</Text>
-                <Text>Especie: {animal.especie}</Text>
-                <Text>Edad: {animal.edad}</Text>
-                <Text>Estado de Salud: {animal.estadoSalud}</Text>
+                <Text style={styles.text}>
+                  <Text style={styles.bold}>Nombre:</Text> {animal.nombre}
+                </Text>
+                <Text style={styles.text}>
+                  <Text style={styles.bold}>Especie:</Text> {animal.especie}
+                </Text>
+                <Text style={styles.text}>
+                  <Text style={styles.bold}>Edad:</Text> {animal.edad} {animal.unidadEdad}
+                </Text>
+                <Text style={styles.text}>
+                  <Text style={styles.bold}>Estado de Salud:</Text> {animal.estadoSalud}
+                </Text>
               </Card.Content>
             </Card>
           )}
@@ -73,8 +127,12 @@ const DetalleCitas = () => {
             <Card style={styles.card}>
               <Card.Title title="Detalles del Adoptante" />
               <Card.Content>
-                <Text>Nombre: {adoptante.nombre}</Text>
-                <Text>ID: {adoptante.id}</Text>
+                <Text style={styles.text}>
+                  <Text style={styles.bold}>Nombre:</Text> {adoptante.nombre}
+                </Text>
+                <Text style={styles.text}>
+                  <Text style={styles.bold}>ID:</Text> {adoptante.id}
+                </Text>
               </Card.Content>
             </Card>
           )}
@@ -90,7 +148,11 @@ const DetalleCitas = () => {
       <Snackbar
         visible={!!error}
         onDismiss={() => setError(null)}
-        action={{ label: 'OK', onPress: () => setError(null) }}
+        duration={3000}
+        action={{
+          label: 'OK',
+          onPress: () => setError(null),
+        }}
       >
         {error}
       </Snackbar>
@@ -109,6 +171,14 @@ const styles = StyleSheet.create({
   },
   button: {
     marginTop: 16,
+    padding: 8,
+  },
+  text: {
+    marginBottom: 8,
+    fontSize: 16,
+  },
+  bold: {
+    fontWeight: 'bold',
   },
 });
 

@@ -1,12 +1,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
-import { TextInput, Button, Snackbar, Card, Dropdown } from 'react-native-paper';
+import { TextInput, Button, Snackbar, Card } from 'react-native-paper';
+import { Picker } from '@react-native-picker/picker';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import axios from 'axios';
+import { Dropdown } from 'react-native-paper-dropdown';
 
 const EditAnimal = () => {
-  const route = useRoute();
+  const route = useRoute<{ key: string; name: string; params: { id: string } }>();
   const navigation = useNavigation();
   const { id } = route.params;
 
@@ -16,8 +18,8 @@ const EditAnimal = () => {
   const [unidadEdad, setUnidadEdad] = useState('años');
   const [estadoSalud, setEstadoSalud] = useState('');
   const [adoptanteId, setAdoptanteId] = useState('');
-  const [adoptantes, setAdoptantes] = useState([]);
-  const [error, setError] = useState(null);
+  const [adoptantes, setAdoptantes] = useState<{ id: string; nombre: string }[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchAnimalData = async () => {
@@ -55,7 +57,7 @@ const EditAnimal = () => {
         estadoSalud,
         adoptanteId,
       });
-      navigation.navigate('Dashboard');
+      navigation.navigate('Dashboard' as never);
     } catch (error) {
       console.error('Error al actualizar datos del animal', error);
       setError('Error al guardar los cambios. Inténtalo nuevamente.');
@@ -63,7 +65,7 @@ const EditAnimal = () => {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <><ScrollView contentContainerStyle={styles.container}>
       <Card style={styles.card}>
         <Card.Title title="Editar Animal" />
         <Card.Content>
@@ -71,60 +73,53 @@ const EditAnimal = () => {
             label="Nombre"
             value={nombre}
             onChangeText={setNombre}
-            style={styles.input}
-          />
+            style={styles.input} />
           <TextInput
             label="Especie"
             value={especie}
             onChangeText={setEspecie}
-            style={styles.input}
-          />
+            style={styles.input} />
           <TextInput
             label="Edad"
             value={edad}
             onChangeText={setEdad}
             keyboardType="numeric"
+            style={styles.input} />
+          <Picker
+            selectedValue={unidadEdad}
+            onValueChange={(itemValue) => setUnidadEdad(itemValue)}
             style={styles.input}
-          />
-          <Dropdown
-            label="Unidad de Edad"
-            value={unidadEdad}
-            onValueChange={setUnidadEdad}
-            data={[
-              { value: 'años', label: 'Años' },
-              { value: 'meses', label: 'Meses' },
-            ]}
-            style={styles.input}
-          />
+          >
+            <Picker.Item label="Años" value="años" />
+            <Picker.Item label="Meses" value="meses" />
+          </Picker>
+          /
           <TextInput
             label="Estado de Salud"
             value={estadoSalud}
             onChangeText={setEstadoSalud}
+            style={styles.input} />
+          <Picker
+            selectedValue={adoptanteId}
+            onValueChange={(itemValue) => setAdoptanteId(itemValue)}
             style={styles.input}
-          />
-          <Dropdown
-            label="Adoptante"
-            value={adoptanteId}
-            onValueChange={setAdoptanteId}
-            data={adoptantes.map((adoptante) => ({
-              value: adoptante.id,
-              label: adoptante.nombre,
-            }))}
-            style={styles.input}
-          />
+          >
+            {adoptantes.map((adoptante) => (
+              <Picker.Item key={adoptante.id} label={adoptante.nombre} value={adoptante.id} />
+            ))}
+          </Picker>
           <Button mode="contained" onPress={handleGuardarCambios} style={styles.button}>
             Guardar Cambios
           </Button>
         </Card.Content>
       </Card>
-      <Snackbar
-        visible={!!error}
-        onDismiss={() => setError(null)}
-        action={{ label: 'OK', onPress: () => setError(null) }}
-      >
+    </ScrollView><Snackbar
+      visible={!!error}
+      onDismiss={() => setError(null)}
+      action={{ label: 'OK', onPress: () => setError(null) }}
+    >
         {error}
-      </Snackbar>
-    </ScrollView>
+      </Snackbar></>
   );
 };
 

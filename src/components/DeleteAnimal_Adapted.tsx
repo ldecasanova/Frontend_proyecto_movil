@@ -5,10 +5,10 @@ import { Card, Button, Snackbar, ActivityIndicator, Text } from 'react-native-pa
 import axios from 'axios';
 
 const DeleteAnimal = () => {
-  const [animales, setAnimales] = useState([]);
+  const [animales, setAnimales] = useState<{ id: number; nombre: string; especie: string; edad: number; estadoSalud: string }[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [eliminandoId, setEliminandoId] = useState(null);
+  const [error, setError] = useState('');
+  const [eliminandoId, setEliminandoId] = useState<number | null>(null);
 
   useEffect(() => {
     fetchAnimales();
@@ -27,7 +27,7 @@ const DeleteAnimal = () => {
     }
   };
 
-  const handleEliminar = async (id) => {
+  const handleEliminar = async (id: number) => {
     setEliminandoId(id);
     try {
       await axios.delete(`http://localhost:8080/api/animales/${id}`);
@@ -66,9 +66,9 @@ const DeleteAnimal = () => {
         ))
       )}
       <Snackbar
-        visible={!!error}
-        onDismiss={() => setError(null)}
-        action={{ label: 'OK', onPress: () => setError(null) }}
+        visible={error !== ''}
+        onDismiss={() => setError('')}
+        action={{ label: 'OK', onPress: () => setError('') }}
       >
         {error}
       </Snackbar>
