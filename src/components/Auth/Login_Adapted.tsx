@@ -1,43 +1,83 @@
-
+// src/screens/Login.tsx
 import React, { useState } from 'react';
-import { View, StyleSheet } from 'react-native';
-import { TextInput, Button, Snackbar, Card } from 'react-native-paper';
+import { View, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { Text, TextInput, Button, Snackbar, Card } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { useNavigation } from '@react-navigation/native';
 
 interface LoginProps {
-  navigation: any;
+  navigation: StackNavigationProp<any>;
 }
 
-const Login: React.FC<LoginProps> = ({ navigation }) => {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+const Login: React.FC<LoginProps> = () => {
+  const navigation = useNavigation<StackNavigationProp<any>>();
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
-    if (!username || !email || !password) {
+    if (!email || !password) {
       setError('Todos los campos son obligatorios.');
       return;
     }
+
+    // Validar formato de correo electrónico
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError('Por favor, ingresa un correo electrónico válido.');
+      return;
+    }
+
+    setLoading(true);
+
     try {
-      const res = await axios.post('http://localhost:8080/api/usuarios/autenticar', {
-        nombre: username,
+      // Reemplaza 'localhost' con la dirección IP de tu servidor si estás usando un dispositivo físico
+      const response = await axios.post('http://10.100.240.121:8080/api/auth/login', {
         email,
-        contrasena: password,
+        password,
       });
 
-      const { userId } = res.data;
+      const { userId, token } = response.data;
 
-      if (!userId) {
-        throw new Error('ID de usuario no recibido.');
+      if (!userId || !token) {
+        throw new Error('Respuesta del servidor inválida.');
       }
 
+      // Almacenar el token y el userId en AsyncStorage
       await AsyncStorage.setItem('userId', userId.toString());
-      navigation.navigate('Dashboard');
-    } catch (error) {
-      console.error('Error al iniciar sesión', error);
-      setError('Error al iniciar sesión. Por favor, inténtelo de nuevo.');
+      await AsyncStorage.setItem('token', token);
+
+      // Navegar a la aplicación principal
+      navigation.replace('App');
+    } catch (err) {
+      console.error('Error al iniciar sesión:', err);
+
+      // Manejo de errores basado en la respuesta del servidor
+      if (axios.isAxiosError(err)) {
+        if (err.response) {
+          // Errores del servidor
+          if (err.response.status === 400) {
+            setError('El usuario ya existe.');
+          } else if (err.response.status === 401) {
+            setError('Credenciales inválidas. Por favor, verifica tu email y contraseña.');
+          } else {
+            setError('Error del servidor. Por favor, inténtalo de nuevo más tarde.');
+          }
+        } else if (err.request) {
+          // Errores de red
+          setError('No se pudo conectar con el servidor. Verifica tu conexión a Internet.');
+        } else {
+          // Otros errores
+          setError('Ocurrió un error inesperado.');
+        }
+      } else {
+        setError('Ocurrió un error inesperado.');
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -47,16 +87,12 @@ const Login: React.FC<LoginProps> = ({ navigation }) => {
         <Card.Title title="Iniciar Sesión" />
         <Card.Content>
           <TextInput
-            label="Nombre de Usuario"
-            value={username}
-            onChangeText={setUsername}
-            style={styles.input}
-          />
-          <TextInput
             label="Correo Electrónico"
             value={email}
             onChangeText={setEmail}
             style={styles.input}
+            keyboardType="email-address"
+            autoCapitalize="none"
           />
           <TextInput
             label="Contraseña"
@@ -65,15 +101,25 @@ const Login: React.FC<LoginProps> = ({ navigation }) => {
             secureTextEntry
             style={styles.input}
           />
-          <Button mode="contained" onPress={handleLogin} style={styles.button}>
-            Iniciar Sesión
+          <Button
+            mode="contained"
+            onPress={handleLogin}
+            style={styles.button}
+            loading={loading}
+            disabled={loading}
+          >
+            {loading ? 'Iniciando...' : 'Iniciar Sesión'}
           </Button>
+          <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+            <Text style={styles.registerText}>¿No tienes una cuenta? Regístrate</Text>
+          </TouchableOpacity>
         </Card.Content>
       </Card>
       <Snackbar
         visible={!!error}
         onDismiss={() => setError(null)}
         action={{ label: 'OK', onPress: () => setError(null) }}
+        duration={5000}
       >
         {error}
       </Snackbar>
@@ -90,12 +136,19 @@ const styles = StyleSheet.create({
   },
   card: {
     padding: 16,
+    elevation: 4,
   },
   input: {
     marginBottom: 16,
+    backgroundColor: '#fff',
   },
   button: {
     marginTop: 16,
+  },
+  registerText: {
+    marginTop: 16,
+    textAlign: 'center',
+    color: '#1e90ff',
   },
 });
 

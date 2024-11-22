@@ -1,21 +1,25 @@
-
+// src/screens/Register.tsx
 import React, { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { TextInput, Button, Snackbar, Card } from 'react-native-paper';
 import axios from 'axios';
-import { NavigationProp } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { useNavigation } from '@react-navigation/native';
+import Config from 'react-native-config';
 
 interface RegisterProps {
-  navigation: NavigationProp<any>;
+  navigation: StackNavigationProp<any>;
 }
 
-const Register = ({ navigation }: RegisterProps) => {
+const Register: React.FC<RegisterProps> = () => {
+  const navigation = useNavigation<StackNavigationProp<any>>();
   const [nombre, setNombre] = useState('');
   const [email, setEmail] = useState('');
   const [direccion, setDireccion] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false); // Opcional: para manejar estado de carga
 
   const validateEmail = (email: string) => {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -23,6 +27,11 @@ const Register = ({ navigation }: RegisterProps) => {
   };
 
   const handleRegister = async () => {
+    if (!nombre || !email || !direccion || !password || !confirmPassword) {
+      setError('Todos los campos son obligatorios.');
+      return;
+    }
+
     if (!validateEmail(email)) {
       setError('Por favor ingresa un correo válido.');
       return;
@@ -33,8 +42,10 @@ const Register = ({ navigation }: RegisterProps) => {
       return;
     }
 
+    setLoading(true); // Opcional: iniciar estado de carga
+
     try {
-      await axios.post('http://localhost:8080/api/usuarios/registro', {
+      await axios.post(`http://172.20.10.3:8080/Auth/register`, {
         nombre,
         email,
         direccion,
@@ -43,7 +54,27 @@ const Register = ({ navigation }: RegisterProps) => {
       navigation.navigate('Login');
     } catch (error) {
       console.error('Error al registrar usuario', error);
-      setError('Error al registrar. Inténtalo de nuevo más tarde.');
+      // Manejo de errores más detallado (opcional)
+      if (axios.isAxiosError(error)) {
+        if (error.response) {
+          // Errores del servidor
+          if (error.response.status === 400) {
+            setError('El usuario ya existe.');
+          } else {
+            setError('Error del servidor. Por favor, inténtalo de nuevo más tarde.');
+          }
+        } else if (error.request) {
+          // Errores de red
+          setError('No se pudo conectar con el servidor. Verifica tu conexión a Internet.');
+        } else {
+          // Otros errores
+          setError('Ocurrió un error inesperado.');
+        }
+      } else {
+        setError('Ocurrió un error inesperado.');
+      }
+    } finally {
+      setLoading(false); // Opcional: finalizar estado de carga
     }
   };
 
@@ -64,6 +95,7 @@ const Register = ({ navigation }: RegisterProps) => {
             onChangeText={setEmail}
             keyboardType="email-address"
             style={styles.input}
+            autoCapitalize="none"
           />
           <TextInput
             label="Dirección"
@@ -85,8 +117,14 @@ const Register = ({ navigation }: RegisterProps) => {
             secureTextEntry
             style={styles.input}
           />
-          <Button mode="contained" onPress={handleRegister} style={styles.button}>
-            Registrarse
+          <Button
+            mode="contained"
+            onPress={handleRegister}
+            style={styles.button}
+            loading={loading} // Opcional: mostrar estado de carga
+            disabled={loading} // Opcional: deshabilitar botón durante la carga
+          >
+            {loading ? 'Registrando...' : 'Registrarse'}
           </Button>
         </Card.Content>
       </Card>
@@ -94,6 +132,7 @@ const Register = ({ navigation }: RegisterProps) => {
         visible={!!error}
         onDismiss={() => setError(null)}
         action={{ label: 'OK', onPress: () => setError(null) }}
+        duration={5000}
       >
         {error}
       </Snackbar>
@@ -110,9 +149,12 @@ const styles = StyleSheet.create({
   },
   card: {
     padding: 16,
+    elevation: 4, // Opcional: agregar sombra en Android
+    borderRadius: 8, // Opcional: redondear bordes
   },
   input: {
     marginBottom: 16,
+    backgroundColor: '#fff',
   },
   button: {
     marginTop: 16,
