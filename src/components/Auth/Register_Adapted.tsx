@@ -45,7 +45,7 @@ const Register: React.FC<RegisterProps> = () => {
     setLoading(true); // Opcional: iniciar estado de carga
 
     try {
-      await axios.post(`http://172.20.10.3:8080/Auth/register`, {
+      await axios.post(`http://192.168.1.74:8081/auth/register`, {
         nombre,
         email,
         direccion,

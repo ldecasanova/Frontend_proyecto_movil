@@ -8,7 +8,7 @@ import Constants from 'expo-constants';
 const { API_URL } = Constants.manifest.extra;
 
 const api = axios.create({
-  baseURL: API_URL,
+  baseURL: 'http://localhost:8080/api',
   headers: {
     'Content-Type': 'application/json',
   },

@@ -35,7 +35,7 @@ const Login: React.FC<LoginProps> = () => {
 
     try {
       // Reemplaza 'localhost' con la dirección IP de tu servidor si estás usando un dispositivo físico
-      const response = await axios.post('http://10.100.240.121:8080/api/auth/login', {
+      const response = await axios.post('http://192.168.1.74:8081/api/auth/login', {
         email,
         password,
       });
