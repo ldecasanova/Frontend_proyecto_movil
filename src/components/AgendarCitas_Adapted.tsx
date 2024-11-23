@@ -17,7 +17,7 @@ const AgendarCita = ({ route, navigation }: { route: any, navigation: any }) => 
   useEffect(() => {
     const fetchAnimales = async () => {
       try {
-        const res = await axios.get('http://localhost:8080/api/animales');
+        const res = await axios.get('http://192.168.1.43:8080/api/animales');
         setAnimales(res.data);
       } catch (error) {
         console.error('Error al obtener la lista de animales', error);

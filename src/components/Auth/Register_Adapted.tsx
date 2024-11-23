@@ -1,65 +1,89 @@
 // src/screens/Register.tsx
 import React, { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
-import { TextInput, Button, Snackbar, Card } from 'react-native-paper';
+import { TextInput, Button, Snackbar, Card, ActivityIndicator } from 'react-native-paper';
 import axios from 'axios';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useNavigation } from '@react-navigation/native';
-import Config from 'react-native-config';
+// Importación correcta de Dropdown
+import Dropdown from 'react-native-paper-dropdown'; // Asegúrate de tener instalada esta biblioteca
 
-interface RegisterProps {
-  navigation: StackNavigationProp<any>;
-}
+// Definición de las rutas del stack
+type RootStackParamList = {
+  Register: undefined;
+  Login: undefined;
+  // Añade otras rutas según sea necesario
+};
 
-const Register: React.FC<RegisterProps> = () => {
-  const navigation = useNavigation<StackNavigationProp<any>>();
+// Tipado de la navegación para Register
+type RegisterNavigationProp = StackNavigationProp<RootStackParamList, 'Register'>;
+
+const Register: React.FC = () => {
+  const navigation = useNavigation<RegisterNavigationProp>();
+  
+  // Estados para los campos del formulario
   const [nombre, setNombre] = useState('');
   const [email, setEmail] = useState('');
   const [direccion, setDireccion] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  
+  // Estados para el manejo de errores y carga
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false); // Opcional: para manejar estado de carga
-
+  const [loading, setLoading] = useState(false);
+  
+  // Estados para manejar la visibilidad de los Dropdown
+  const [showDropDownPassword, setShowDropDownPassword] = useState(false);
+  
+  // Dirección IP específica proporcionada
+  const API_BASE_URL = 'http://192.168.1.43:8080/api'; // <--- Utiliza la IP proporcionada
+  
+  // Función para validar el formato del correo electrónico
   const validateEmail = (email: string) => {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return re.test(email);
   };
-
+  
+  // Función para manejar el registro
   const handleRegister = async () => {
+    // Validaciones básicas
     if (!nombre || !email || !direccion || !password || !confirmPassword) {
       setError('Todos los campos son obligatorios.');
       return;
     }
-
+    
     if (!validateEmail(email)) {
       setError('Por favor ingresa un correo válido.');
       return;
     }
-
+    
     if (password !== confirmPassword) {
       setError('Las contraseñas no coinciden.');
       return;
     }
-
-    setLoading(true); // Opcional: iniciar estado de carga
-
+    
+    setLoading(true); // Iniciar estado de carga
+    
     try {
-      await axios.post(`http://192.168.1.74:8081/auth/register`, {
+      // Solicitud POST al backend con nombres de campos alineados
+      await axios.post(`${API_BASE_URL}/auth/register`, {
         nombre,
         email,
         direccion,
-        contrasena: password,
+        password,          // Campo correcto
+        confirmPassword,   // Campo agregado
       });
+      // Navegar a la pantalla de Login tras el registro exitoso
       navigation.navigate('Login');
     } catch (error) {
       console.error('Error al registrar usuario', error);
-      // Manejo de errores más detallado (opcional)
+      
+      // Manejo de errores más detallado
       if (axios.isAxiosError(error)) {
         if (error.response) {
           // Errores del servidor
           if (error.response.status === 400) {
-            setError('El usuario ya existe.');
+            setError('El usuario ya existe o los datos son inválidos.');
           } else {
             setError('Error del servidor. Por favor, inténtalo de nuevo más tarde.');
           }
@@ -74,10 +98,10 @@ const Register: React.FC<RegisterProps> = () => {
         setError('Ocurrió un error inesperado.');
       }
     } finally {
-      setLoading(false); // Opcional: finalizar estado de carga
+      setLoading(false); // Finalizar estado de carga
     }
   };
-
+  
   return (
     <View style={styles.container}>
       <Card style={styles.card}>
@@ -121,8 +145,8 @@ const Register: React.FC<RegisterProps> = () => {
             mode="contained"
             onPress={handleRegister}
             style={styles.button}
-            loading={loading} // Opcional: mostrar estado de carga
-            disabled={loading} // Opcional: deshabilitar botón durante la carga
+            loading={loading}      // Mostrar estado de carga
+            disabled={loading}     // Deshabilitar botón durante la carga
           >
             {loading ? 'Registrando...' : 'Registrarse'}
           </Button>
@@ -136,6 +160,13 @@ const Register: React.FC<RegisterProps> = () => {
       >
         {error}
       </Snackbar>
+      {loading && (
+        <ActivityIndicator
+          size="large"
+          style={styles.loadingIndicator}
+          animating={loading}
+        />
+      )}
     </View>
   );
 };
@@ -149,14 +180,17 @@ const styles = StyleSheet.create({
   },
   card: {
     padding: 16,
-    elevation: 4, // Opcional: agregar sombra en Android
-    borderRadius: 8, // Opcional: redondear bordes
+    elevation: 4,          // Sombra en Android
+    borderRadius: 8,       // Bordes redondeados
   },
   input: {
     marginBottom: 16,
     backgroundColor: '#fff',
   },
   button: {
+    marginTop: 16,
+  },
+  loadingIndicator: {
     marginTop: 16,
   },
 });

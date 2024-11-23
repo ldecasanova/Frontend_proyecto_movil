@@ -1,149 +1,195 @@
 // src/screens/Login.tsx
 import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Alert } from 'react-native';
-import { Text, TextInput, Button, Snackbar, Card } from 'react-native-paper';
+import {
+  View,
+  StyleSheet,
+  TouchableOpacity,
+  KeyboardAvoidingView,
+  Platform,
+  Alert,
+} from 'react-native';
+import { Text, TextInput, Button } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, CommonActions } from '@react-navigation/native';
 
-interface LoginProps {
-  navigation: StackNavigationProp<any>;
+// Definición de las rutas del stack
+type RootStackParamList = {
+  Login: undefined;
+  Register: undefined;
+  AppTabs: undefined; // Cambiamos 'App' por 'AppTabs'
+};
+
+// Tipado de la navegación para Login
+type LoginNavigationProp = StackNavigationProp<RootStackParamList, 'Login'>;
+
+interface AutenticacionResponseDto {
+  userId: number;
+  // Otros campos si es necesario
 }
 
-const Login: React.FC<LoginProps> = () => {
-  const navigation = useNavigation<StackNavigationProp<any>>();
-  const [email, setEmail] = useState('');
+const Login: React.FC = () => {
+  const navigation = useNavigation<LoginNavigationProp>();
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState('');
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      setError('Todos los campos son obligatorios.');
+    // Validaciones básicas
+    if (!username || !email || !password) {
+      Alert.alert('Error', 'Todos los campos son obligatorios.');
       return;
     }
 
     // Validar formato de correo electrónico
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      setError('Por favor, ingresa un correo electrónico válido.');
+      Alert.alert('Error', 'Por favor, ingresa un correo electrónico válido.');
       return;
     }
 
-    setLoading(true);
-
     try {
-      // Reemplaza 'localhost' con la dirección IP de tu servidor si estás usando un dispositivo físico
-      const response = await axios.post('http://192.168.1.74:8081/api/auth/login', {
-        email,
-        password,
-      });
+      // Solicitud POST al backend
+      const res = await axios.post<AutenticacionResponseDto>(
+        'http://192.168.1.43:8080/api/usuarios/autenticar',
+        {
+          nombre: username,
+          email,
+          contrasena: password,
+        }
+      );
 
-      const { userId, token } = response.data;
+      const { userId } = res.data;
 
-      if (!userId || !token) {
-        throw new Error('Respuesta del servidor inválida.');
+      if (!userId) {
+        throw new Error('ID de usuario no recibido.');
       }
 
-      // Almacenar el token y el userId en AsyncStorage
+      // Guardar el ID del usuario en AsyncStorage
       await AsyncStorage.setItem('userId', userId.toString());
-      await AsyncStorage.setItem('token', token);
 
-      // Navegar a la aplicación principal
-      navigation.replace('App');
-    } catch (err) {
-      console.error('Error al iniciar sesión:', err);
+      // Mostrar mensaje de éxito
+      Alert.alert('Éxito', 'Inicio de sesión exitoso.');
 
-      // Manejo de errores basado en la respuesta del servidor
-      if (axios.isAxiosError(err)) {
-        if (err.response) {
-          // Errores del servidor
-          if (err.response.status === 400) {
-            setError('El usuario ya existe.');
-          } else if (err.response.status === 401) {
-            setError('Credenciales inválidas. Por favor, verifica tu email y contraseña.');
-          } else {
-            setError('Error del servidor. Por favor, inténtalo de nuevo más tarde.');
-          }
-        } else if (err.request) {
-          // Errores de red
-          setError('No se pudo conectar con el servidor. Verifica tu conexión a Internet.');
+      // Navegar al AppTabs
+      navigation.replace('AppTabs'); // Cambiamos 'App' por 'AppTabs'
+
+      // O puedes usar navigation.dispatch con CommonActions.reset para evitar que el usuario pueda regresar a la pantalla de login:
+      /*
+      navigation.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [{ name: 'AppTabs' }],
+        })
+      );
+      */
+    } catch (error: any) {
+      console.error('Error al iniciar sesión:', error);
+
+      if (axios.isAxiosError(error)) {
+        if (error.response) {
+          Alert.alert(
+            'Error',
+            error.response.data.message || 'Error al iniciar sesión.'
+          );
+        } else if (error.request) {
+          Alert.alert(
+            'Error',
+            'No se pudo conectar con el servidor. Verifica tu conexión a Internet.'
+          );
         } else {
-          // Otros errores
-          setError('Ocurrió un error inesperado.');
+          Alert.alert('Error', 'Ocurrió un error inesperado.');
         }
       } else {
-        setError('Ocurrió un error inesperado.');
+        Alert.alert('Error', 'Ocurrió un error inesperado.');
       }
-    } finally {
-      setLoading(false);
     }
   };
 
   return (
-    <View style={styles.container}>
-      <Card style={styles.card}>
-        <Card.Title title="Iniciar Sesión" />
-        <Card.Content>
-          <TextInput
-            label="Correo Electrónico"
-            value={email}
-            onChangeText={setEmail}
-            style={styles.input}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-          <TextInput
-            label="Contraseña"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            style={styles.input}
-          />
-          <Button
-            mode="contained"
-            onPress={handleLogin}
-            style={styles.button}
-            loading={loading}
-            disabled={loading}
-          >
-            {loading ? 'Iniciando...' : 'Iniciar Sesión'}
-          </Button>
-          <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-            <Text style={styles.registerText}>¿No tienes una cuenta? Regístrate</Text>
-          </TouchableOpacity>
-        </Card.Content>
-      </Card>
-      <Snackbar
-        visible={!!error}
-        onDismiss={() => setError(null)}
-        action={{ label: 'OK', onPress: () => setError(null) }}
-        duration={5000}
-      >
-        {error}
-      </Snackbar>
-    </View>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <View style={styles.card}>
+        <Text style={styles.title}>Iniciar Sesión</Text>
+        {/* Campo de nombre de usuario */}
+        <TextInput
+          label="Nombre de usuario"
+          value={username}
+          onChangeText={setUsername}
+          style={styles.input}
+          autoCapitalize="none"
+          mode="outlined"
+        />
+        {/* Campo de correo */}
+        <TextInput
+          label="Correo Electrónico"
+          value={email}
+          onChangeText={setEmail}
+          style={styles.input}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          mode="outlined"
+        />
+        {/* Campo de contraseña */}
+        <TextInput
+          label="Contraseña"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          style={styles.input}
+          mode="outlined"
+        />
+        {/* Botón para iniciar sesión */}
+        <Button
+          mode="contained"
+          onPress={handleLogin}
+          style={styles.button}
+          contentStyle={styles.buttonContent}
+        >
+          Iniciar Sesión
+        </Button>
+        <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+          <Text style={styles.registerText}>
+            ¿No tienes una cuenta? Regístrate aquí
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
+  // Tus estilos existentes
   container: {
     flex: 1,
-    justifyContent: 'center',
-    padding: 16,
     backgroundColor: '#fff',
+    paddingHorizontal: 16,
+    justifyContent: 'center',
   },
   card: {
-    padding: 16,
+    backgroundColor: '#fff',
+    padding: 24,
+    borderRadius: 8,
     elevation: 4,
+  },
+  title: {
+    fontSize: 24,
+    textAlign: 'center',
+    marginBottom: 24,
+    fontWeight: 'bold',
   },
   input: {
     marginBottom: 16,
     backgroundColor: '#fff',
   },
   button: {
-    marginTop: 16,
+    marginTop: 8,
+  },
+  buttonContent: {
+    paddingVertical: 8,
   },
   registerText: {
     marginTop: 16,

@@ -38,7 +38,7 @@ const RegisterAnimal: React.FC<RegisterAnimalProps> = ({ navigation }) => {
   const [showDropDownAdoptante, setShowDropDownAdoptante] = useState(false);
 
   // Reemplaza '192.168.x.x' con la dirección IP real de tu máquina de desarrollo
-  const API_BASE_URL = 'http://192.168.x.x:8080/api'; // <--- Actualiza esta línea
+  const API_BASE_URL = 'http://192.168.1.43:8080/api'; // <--- Actualiza esta línea
 
   useEffect(() => {
     const fetchAdoptantes = async () => {

@@ -19,7 +19,7 @@ const AgregarAdoptante = () => {
       return;
     }
     try {
-      await axios.post('http://localhost:8080/api/adoptantes', {
+      await axios.post('http://192.168.1.43:8080/api/adoptantes', {
         nombre,
         email,
         direccion,

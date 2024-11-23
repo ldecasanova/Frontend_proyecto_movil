@@ -33,7 +33,7 @@ const AdoptantesList = () => {
   const [error, setError] = useState<string | null>(null);
 
   // 4. Cambiar localhost por la IP de tu máquina de desarrollo
-  const API_BASE_URL = 'http://192.168.x.x:8080/api'; // Reemplaza '192.168.x.x' con tu IP real
+  const API_BASE_URL = 'http://192.168.1.43:8080/api'; // Reemplaza '192.168.x.x' con tu IP real
 
   useEffect(() => {
     fetchAdoptantes();

@@ -24,7 +24,7 @@ const EditAnimal = () => {
   useEffect(() => {
     const fetchAnimalData = async () => {
       try {
-        const animalRes = await axios.get(`http://localhost:8080/api/animales/${id}`);
+        const animalRes = await axios.get(`http://192.168.1.43:8080/api/animales/${id}`);
         const { nombre, especie, edad, unidadEdad, estadoSalud, adoptanteId } = animalRes.data;
         setNombre(nombre);
         setEspecie(especie);
@@ -32,7 +32,7 @@ const EditAnimal = () => {
         setUnidadEdad(unidadEdad);
         setEstadoSalud(estadoSalud);
         setAdoptanteId(adoptanteId);
-        const adoptantesRes = await axios.get('http://localhost:8080/api/adoptantes');
+        const adoptantesRes = await axios.get('http://192.168.1.43:8080/api/adoptantes');
         setAdoptantes(adoptantesRes.data);
       } catch (error) {
         console.error('Error al obtener datos del animal', error);
@@ -49,7 +49,7 @@ const EditAnimal = () => {
       return;
     }
     try {
-      await axios.put(`http://localhost:8080/api/animales/${id}`, {
+      await axios.put(`http://192.168.1.43:8080/api/animales/${id}`, {
         nombre,
         especie,
         edad: parseInt(edad, 10),

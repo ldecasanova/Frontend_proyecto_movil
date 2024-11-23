@@ -41,7 +41,7 @@ const Perfil = () => {
     }
     try {
       const userId = await AsyncStorage.getItem('userId');
-      await axios.put(`http://localhost:8080/api/usuarios/${userId}/cambiar-contrasena`, {
+      await axios.put(`http://192.168.1.43:8080/api/usuarios/${userId}/cambiar-contrasena`, {
         passwordActual,
         nuevaPassword,
       });

@@ -17,7 +17,7 @@ const DeleteAnimal = () => {
   const fetchAnimales = async () => {
     setLoading(true);
     try {
-      const res = await axios.get('http://localhost:8080/api/animales');
+      const res = await axios.get('http://192.168.1.43:8080/api/animales');
       setAnimales(res.data);
     } catch (error) {
       console.error('Error al obtener animales', error);
