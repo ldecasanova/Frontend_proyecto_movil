@@ -1,12 +1,16 @@
 // App.tsx
 
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, View, Alert } from 'react-native';
-import { NavigationContainer, CommonActions } from '@react-navigation/native';
+import { ActivityIndicator, View, Alert, StyleSheet, LogBox } from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator, StackNavigationProp } from '@react-navigation/stack';
 import { Provider as PaperProvider } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Toast from 'react-native-toast-message'; // Importar Toast
+
+// Importar iconos
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
 // Importar componentes adaptados
 import Dashboard from './src/components/Dashboard_Adapted';
@@ -41,9 +45,40 @@ type RootStackParamList = {
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator<RootStackParamList>();
 
-// Definir Tab Navigator
+// Definir Tab Navigator con iconos
 const AppTabs = () => (
-  <Tab.Navigator>
+  <Tab.Navigator
+    screenOptions={({ route }) => ({
+      headerShown: false,
+      tabBarIcon: ({ focused, color, size }) => {
+        let iconName: string = '';
+
+        switch (route.name) {
+          case 'Dashboard':
+            iconName = focused ? 'home' : 'home-outline';
+            break;
+          case 'Adoptantes':
+            iconName = focused ? 'people' : 'people-outline';
+            break;
+          case 'Registrar Animal':
+            iconName = focused ? 'add-circle' : 'add-circle-outline';
+            break;
+          case 'Calendario':
+            iconName = focused ? 'calendar' : 'calendar-outline';
+            break;
+          case 'Perfil':
+            iconName = focused ? 'person' : 'person-outline';
+            break;
+          default:
+            iconName = 'ellipse';
+        }
+
+        return <Ionicons name={iconName} size={size} color={color} />;
+      },
+      tabBarActiveTintColor: '#6200ee',
+      tabBarInactiveTintColor: 'gray',
+    })}
+  >
     <Tab.Screen name="Dashboard" component={Dashboard} />
     <Tab.Screen name="Adoptantes" component={AdoptantesList} />
     <Tab.Screen name="Registrar Animal" component={RegistrarAnimal} />
@@ -65,6 +100,7 @@ const RootNavigator = () => {
         setUserId(storedUserId);
       } catch (error) {
         console.error('Error al verificar el estado de inicio de sesión', error);
+        Alert.alert('Error', 'Ocurrió un error al verificar el estado de inicio de sesión.');
       } finally {
         setIsLoading(false);
       }
@@ -76,7 +112,7 @@ const RootNavigator = () => {
   if (isLoading) {
     // Mostrar indicador de carga mientras se verifica el estado de autenticación
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <View style={styles.center}>
         <ActivityIndicator size="large" />
       </View>
     );
@@ -113,9 +149,23 @@ const RootNavigator = () => {
 
 // Definir el componente principal de la aplicación
 export default function App() {
+  // Ignorar advertencias de LogBox que no son críticas
+  useEffect(() => {
+    LogBox.ignoreLogs(['Setting a timer']);
+  }, []);
+
   return (
     <PaperProvider>
       <RootNavigator />
+      <Toast /> {/* Incluir Toast en el componente raíz */}
     </PaperProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+});
