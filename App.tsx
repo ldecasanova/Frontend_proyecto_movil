@@ -30,9 +30,8 @@ import EditarAnimal from './src/components/EditAnimal_Adapted';
 
 // Definir tipos para la navegación
 type RootStackParamList = {
-  Login: undefined;
-  Register: undefined;
-  AppTabs: undefined;
+  Auth: undefined;
+  App: undefined;
   DetallesCita: { citaId: string };
   VacunasAnimal: { animalId: string };
   AgendarCita: { animalId: string };
@@ -41,9 +40,9 @@ type RootStackParamList = {
   // Agrega otras rutas aquí si es necesario
 };
 
-// Crear navegadores
+const AuthStack = createStackNavigator();
+const AppStack = createStackNavigator();
 const Tab = createBottomTabNavigator();
-const Stack = createStackNavigator<RootStackParamList>();
 
 // Definir Tab Navigator con iconos
 const AppTabs = () => (
@@ -88,16 +87,48 @@ const AppTabs = () => (
   </Tab.Navigator>
 );
 
+// Definir el Auth Stack
+const AuthStackScreen = () => (
+  <AuthStack.Navigator
+    initialRouteName="Login"
+    screenOptions={{ headerShown: false }}
+  >
+    <AuthStack.Screen name="Login" component={Login} />
+    <AuthStack.Screen name="Register" component={Register} />
+  </AuthStack.Navigator>
+);
+
+// Definir el App Stack
+const AppStackScreen = () => (
+  <AppStack.Navigator
+    initialRouteName="AppTabs"
+    screenOptions={{ headerShown: false }}
+  >
+    <AppStack.Screen name="AppTabs" component={AppTabs} />
+    {/* Rutas adicionales dentro de la aplicación */}
+    <AppStack.Screen name="DetallesCita" component={DetallesCita} />
+    
+    <AppStack.Screen name="AgendarCita" component={AgendarCita} />
+    <AppStack.Screen name="EditarAnimal" component={EditarAnimal} />
+    <AppStack.Screen name="Logout" component={Logout} />
+    {/* Agrega otras pantallas aquí si es necesario */}
+  </AppStack.Navigator>
+);
+
 // Definir Root Navigator para manejar la autenticación
 const RootNavigator = () => {
   const [isLoading, setIsLoading] = useState(true);
-  const [userId, setUserId] = useState<string | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
     const checkLoginStatus = async () => {
       try {
         const storedUserId = await AsyncStorage.getItem('userId');
-        setUserId(storedUserId);
+        if (storedUserId) {
+          setIsAuthenticated(true);
+        } else {
+          setIsAuthenticated(false);
+        }
       } catch (error) {
         console.error('Error al verificar el estado de inicio de sesión', error);
         Alert.alert('Error', 'Ocurrió un error al verificar el estado de inicio de sesión.');
@@ -120,29 +151,7 @@ const RootNavigator = () => {
 
   return (
     <NavigationContainer>
-      <Stack.Navigator
-        initialRouteName={userId ? 'AppTabs' : 'Login'}
-        screenOptions={{ headerShown: false }}
-      >
-        {/* Rutas de autenticación */}
-        {!userId ? (
-          <>
-            <Stack.Screen name="Login" component={Login} />
-            <Stack.Screen name="Register" component={Register} />
-          </>
-        ) : (
-          <>
-            <Stack.Screen name="AppTabs" component={AppTabs} />
-            {/* Rutas adicionales dentro de la aplicación */}
-            <Stack.Screen name="DetallesCita" component={DetallesCita} />
-            <Stack.Screen name="VacunasAnimal" component={VacunasAnimal} />
-            <Stack.Screen name="AgendarCita" component={AgendarCita} />
-            <Stack.Screen name="EditarAnimal" component={EditarAnimal} />
-            <Stack.Screen name="Logout" component={Logout} />
-            {/* Agrega otras pantallas aquí si es necesario */}
-          </>
-        )}
-      </Stack.Navigator>
+      {isAuthenticated ? <AppStackScreen /> : <AuthStackScreen />}
     </NavigationContainer>
   );
 };

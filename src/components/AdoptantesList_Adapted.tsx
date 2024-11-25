@@ -1,22 +1,25 @@
 // src/components/AdoptantesList.tsx
 
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, ScrollView, Alert } from 'react-native';
-import { Card, Button, Snackbar, ActivityIndicator, Text } from 'react-native-paper';
-import { useNavigation, NavigationProp } from '@react-navigation/native';
+import {
+  StyleSheet,
+  ScrollView,
+  View,
+} from 'react-native';
+import {
+  Card,
+  Snackbar,
+  ActivityIndicator,
+  Text,
+} from 'react-native-paper';
 import axios from 'axios';
+import Icon from 'react-native-vector-icons/FontAwesome5'; // Para los íconos
 
-// 1. Definir RootStackParamList dentro del mismo archivo
 type RootStackParamList = {
   AdoptantesList: undefined;
-  DetalleAdoptante: { id: number };
-  // Añade otras rutas según sea necesario
+  // Agrega otras rutas aquí si es necesario
 };
 
-// 2. Tipar useNavigation correctamente
-type AdoptantesListNavigationProp = NavigationProp<RootStackParamList, 'AdoptantesList'>;
-
-// 3. Definir el tipo Adoptante
 interface Adoptante {
   id: number;
   nombre: string;
@@ -26,20 +29,18 @@ interface Adoptante {
 }
 
 const AdoptantesList = () => {
-  const navigation = useNavigation<AdoptantesListNavigationProp>();
   const [adoptantes, setAdoptantes] = useState<Adoptante[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
-  const [eliminandoId, setEliminandoId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // 4. Cambiar localhost por la IP de tu máquina de desarrollo
-  const API_BASE_URL = 'http://192.168.1.43:8080/api'; // Reemplaza '192.168.x.x' con tu IP real
+  // Reemplaza '192.168.x.x' con la dirección IP real de tu máquina de desarrollo
+  const API_BASE_URL = 'http://192.168.1.43:8080/api'; // <--- Actualiza esta línea
 
   useEffect(() => {
     fetchAdoptantes();
   }, []);
 
-  // 5. Definir la función fetchAdoptantes correctamente
+  // Función para obtener la lista de adoptantes
   const fetchAdoptantes = async () => {
     setLoading(true);
     try {
@@ -53,71 +54,38 @@ const AdoptantesList = () => {
     }
   };
 
-  // 6. Manejar la eliminación con confirmación
-  const handleEliminar = async (id: number) => {
-    Alert.alert(
-      'Confirmar Eliminación',
-      '¿Estás seguro de que deseas eliminar este adoptante?',
-      [
-        {
-          text: 'Cancelar',
-          style: 'cancel',
-        },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            setEliminandoId(id);
-            try {
-              await axios.delete(`${API_BASE_URL}/adoptantes/${id}`);
-              setAdoptantes(adoptantes.filter((adoptante) => adoptante.id !== id));
-              setError(null); // Limpiar errores si la eliminación fue exitosa
-            } catch (error) {
-              console.error('Error al eliminar adoptante', error);
-              setError('Error al eliminar el adoptante. Inténtalo nuevamente.');
-            } finally {
-              setEliminandoId(null);
-            }
-          },
-        },
-      ],
-      { cancelable: true }
-    );
-  };
-
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      {/* Encabezado con Título e Ícono */}
+      <View style={styles.header}>
+        <Icon name="users" size={30} color={colors.primary} />
+        <Text style={styles.headerText}>Lista de Adoptantes</Text>
+      </View>
+
+      {/* Lista de Adoptantes */}
       {loading ? (
-        <ActivityIndicator size="large" />
-      ) : (
+        <ActivityIndicator size="large" color={colors.primary} style={styles.loading} />
+      ) : adoptantes.length > 0 ? (
         adoptantes.map((adoptante) => (
           <Card key={adoptante.id} style={styles.card}>
-            <Card.Title title={adoptante.nombre} subtitle={`Correo: ${adoptante.email}`} />
+            <Card.Title
+              title={adoptante.nombre}
+              subtitle={`Correo: ${adoptante.email}`}
+              left={(props) => <Icon name="user" color={colors.primary} {...props} />}
+            />
             <Card.Content>
-              <Text>Dirección: {adoptante.direccion}</Text>
-              <Text>Teléfono: {adoptante.telefono}</Text>
+              <Text style={styles.infoText}>Dirección: {adoptante.direccion}</Text>
+              <Text style={styles.infoText}>Teléfono: {adoptante.telefono}</Text>
             </Card.Content>
-            <Card.Actions>
-              <Button
-                mode="contained"
-                onPress={() => handleEliminar(adoptante.id)}
-                loading={eliminandoId === adoptante.id}
-                disabled={eliminandoId === adoptante.id}
-                style={styles.button}
-              >
-                {eliminandoId === adoptante.id ? 'Eliminando...' : 'Eliminar'}
-              </Button>
-              <Button
-                mode="outlined"
-                onPress={() => navigation.navigate('DetalleAdoptante', { id: adoptante.id })}
-                style={styles.button}
-              >
-                Detalles
-              </Button>
-            </Card.Actions>
           </Card>
         ))
+      ) : (
+        <View style={styles.noDataContainer}>
+          <Text style={styles.noDataText}>No hay adoptantes registrados.</Text>
+        </View>
       )}
+
+      {/* Snackbar para Mensajes de Error */}
       <Snackbar
         visible={!!error}
         onDismiss={() => setError(null)}
@@ -130,17 +98,55 @@ const AdoptantesList = () => {
   );
 };
 
+// Definir una paleta de colores para mantener consistencia
+const colors = {
+  primary: '#2563EB', // Azul
+  secondary: '#16A34A', // Verde
+  danger: '#DC2626', // Rojo
+  warning: '#F59E0B', // Amarillo
+  neutral: '#F3F4F6', // Gris claro
+  textDark: '#374151', // Gris oscuro
+  textLight: '#FFFFFF', // Blanco
+};
+
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
     padding: 16,
-    backgroundColor: '#fff',
+    backgroundColor: colors.neutral,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  headerText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: colors.primary,
+    marginLeft: 8,
   },
   card: {
     marginBottom: 16,
+    borderRadius: 8,
   },
-  button: {
-    marginRight: 8,
+  infoText: {
+    fontSize: 16,
+    color: colors.textDark,
+    marginBottom: 4,
+  },
+  loading: {
+    marginTop: 32,
+  },
+  noDataContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 32,
+  },
+  noDataText: {
+    fontSize: 18,
+    color: '#555555',
   },
 });
 

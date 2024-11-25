@@ -16,14 +16,15 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
 import { FontAwesome } from '@expo/vector-icons';
-import { Accelerometer } from 'expo-sensors';
 import * as ImagePicker from 'expo-image-picker';
+import { Accelerometer } from 'expo-sensors';
 
 // Definición de la interfaz para los datos del usuario
 interface UsuarioResponseDto {
   nombre: string;
   email: string;
   direccion: string;
+  fotoPerfilUrl?: string;
   // Añade otras propiedades si es necesario
 }
 
@@ -42,12 +43,18 @@ const Perfil = () => {
   // Estados para manejar la carga y errores
   const [loading, setLoading] = useState<boolean>(true);
 
+  // ID de usuario predeterminado
+  const userId = '1'; // Usamos una cadena para facilitar el uso en URLs
+
   // Estados para manejar la aceleración
   const [subscription, setSubscription] = useState<any>(null);
 
   useEffect(() => {
     // Suscribirse al acelerómetro
     _subscribe();
+
+    // Cargar los datos del perfil al montar el componente
+    fetchPerfil();
 
     return () => {
       // Cancelar la suscripción al desmontar el componente
@@ -76,72 +83,52 @@ const Perfil = () => {
 
   const handleDeviceShake = () => {
     Alert.alert('Dispositivo agitado', 'Has agitado el dispositivo.');
-    // Puedes realizar cualquier acción aquí, como resetear la foto de perfil
+    // Puedes realizar cualquier acción aquí, como resetear la foto de perfil o mostrar un mensaje
   };
 
-  useEffect(() => {
-    const fetchPerfil = async () => {
-      try {
-        const userId = await AsyncStorage.getItem('userId');
-        const token = await AsyncStorage.getItem('token');
+  const fetchPerfil = async () => {
+    try {
+      // Intentar cargar desde el caché primero
+      const cachedNombre = await AsyncStorage.getItem('nombre');
+      const cachedEmail = await AsyncStorage.getItem('email');
+      const cachedDireccion = await AsyncStorage.getItem('direccion');
+      const cachedFotoPerfilUrl = await AsyncStorage.getItem('fotoPerfilUrl');
 
-        if (!userId || !token) {
-          Toast.show({
-            type: 'error',
-            text1: 'Error',
-            text2: 'No se pudo encontrar el ID del usuario o el token.',
-          });
-          setLoading(false);
-          return;
-        }
+      if (cachedNombre && cachedEmail && cachedDireccion) {
+        setNombre(cachedNombre);
+        setEmail(cachedEmail);
+        setDireccion(cachedDireccion);
+        setFotoPerfilUrl(cachedFotoPerfilUrl || '');
+        setLoading(false);
+      } else {
+        // Si no hay datos en caché, obtenerlos del servidor
+        const res = await axios.get<UsuarioResponseDto>(
+          `http://192.168.1.43:8080/api/usuarios/${userId}`
+        );
+        const data = res.data;
 
-        // Intentar cargar desde el caché primero
-        const cachedNombre = await AsyncStorage.getItem('nombre');
-        const cachedEmail = await AsyncStorage.getItem('email');
-        const cachedDireccion = await AsyncStorage.getItem('direccion');
-        const cachedFotoPerfilUrl = await AsyncStorage.getItem('fotoPerfilUrl');
+        setNombre(data.nombre);
+        setEmail(data.email);
+        setDireccion(data.direccion);
+        setFotoPerfilUrl(data.fotoPerfilUrl || '');
 
-        if (cachedNombre && cachedEmail && cachedDireccion) {
-          setNombre(cachedNombre);
-          setEmail(cachedEmail);
-          setDireccion(cachedDireccion);
-          setFotoPerfilUrl(cachedFotoPerfilUrl || '');
-          setLoading(false);
-        } else {
-          // Si no hay datos en caché, obtenerlos del servidor
-          const res = await axios.get<UsuarioResponseDto>(
-            `http://192.168.1.43:8080/usuarios/${userId}`,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
-          );
-          const data = res.data;
-
-          setNombre(data.nombre);
-          setEmail(data.email);
-          setDireccion(data.direccion);
-
-          // Guardar datos en AsyncStorage para usar en el caché
-          await AsyncStorage.setItem('nombre', data.nombre);
-          await AsyncStorage.setItem('email', data.email);
-          await AsyncStorage.setItem('direccion', data.direccion);
-          setLoading(false);
-        }
-      } catch (error: any) {
-        console.error('Error al cargar los datos del perfil:', error);
-        Toast.show({
-          type: 'error',
-          text1: 'Error',
-          text2: error.response?.data?.message || 'Error al cargar los datos del perfil.',
-        });
+        // Guardar datos en AsyncStorage para usar en el caché
+        await AsyncStorage.setItem('nombre', data.nombre);
+        await AsyncStorage.setItem('email', data.email);
+        await AsyncStorage.setItem('direccion', data.direccion);
+        await AsyncStorage.setItem('fotoPerfilUrl', data.fotoPerfilUrl || '');
         setLoading(false);
       }
-    };
-
-    fetchPerfil();
-  }, []);
+    } catch (error: any) {
+      console.error('Error al cargar los datos del perfil:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: error.response?.data?.message || 'Error al cargar los datos del perfil.',
+      });
+      setLoading(false);
+    }
+  };
 
   // Función para manejar la selección de imagen desde la galería
   const handleSelectImage = async () => {
@@ -192,19 +179,8 @@ const Perfil = () => {
   // Actualizar perfil
   const handleActualizarPerfil = async () => {
     try {
-      const userId = await AsyncStorage.getItem('userId');
-      const token = await AsyncStorage.getItem('token');
-
-      if (!userId || !token) {
-        Toast.show({
-          type: 'error',
-          text1: 'Error',
-          text2: 'No se pudo encontrar el ID del usuario o el token.',
-        });
-        return;
-      }
-
       const formData = new FormData();
+      formData.append('userId', userId); // Enviar el userId predeterminado
       formData.append('nombre', nombre);
       formData.append('email', email);
       formData.append('direccion', direccion);
@@ -220,10 +196,9 @@ const Perfil = () => {
         } as any);
       }
 
-      await axios.put(`http://192.168.1.43:8080/usuarios/perfil`, formData, {
+      await axios.put(`http://192.168.1.43:8080/api/usuarios/perfil?userId=${userId}`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
-          Authorization: `Bearer ${token}`,
         },
       });
 
@@ -251,27 +226,36 @@ const Perfil = () => {
   // Cambiar contraseña
   const handleCambiarContrasena = async () => {
     try {
-      const userId = await AsyncStorage.getItem('userId');
-      const token = await AsyncStorage.getItem('token');
-
-      if (!userId || !token) {
+      // Validar que las contraseñas no estén vacías
+      if (!passwordActual || !nuevaPassword) {
         Toast.show({
           type: 'error',
           text1: 'Error',
-          text2: 'No se pudo encontrar el ID del usuario o el token.',
+          text2: 'Por favor, completa todos los campos de contraseña.',
         });
         return;
       }
 
+      // Validar que la nueva contraseña cumpla con los requisitos (opcional)
+      if (nuevaPassword.length < 6) {
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: 'La nueva contraseña debe tener al menos 6 caracteres.',
+        });
+        return;
+      }
+
+      // Realizar solicitud al backend para cambiar la contraseña
       await axios.put(
-        `http://192.168.1.43:8080/usuarios/perfil/cambiar-contrasena`,
+        `http://192.168.1.43:8080/api/usuarios/perfil/cambiar-contrasena?userId=${userId}`,
         {
           contrasenaActual: passwordActual,
           nuevaContrasena: nuevaPassword,
         },
         {
           headers: {
-            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
           },
         }
       );
@@ -314,7 +298,11 @@ const Perfil = () => {
           style={[styles.navButton, activeTab === 'perfil' && styles.activeNavButton]}
           onPress={() => setActiveTab('perfil')}
         >
-          <FontAwesome name="user" size={20} color={activeTab === 'perfil' ? '#4CAF50' : '#555'} />
+          <FontAwesome
+            name="user"
+            size={20}
+            color={activeTab === 'perfil' ? '#4CAF50' : '#555'}
+          />
           <Text
             style={[
               styles.navButtonText,
@@ -328,7 +316,11 @@ const Perfil = () => {
           style={[styles.navButton, activeTab === 'seguridad' && styles.activeNavButton]}
           onPress={() => setActiveTab('seguridad')}
         >
-          <FontAwesome name="lock" size={20} color={activeTab === 'seguridad' ? '#4CAF50' : '#555'} />
+          <FontAwesome
+            name="lock"
+            size={20}
+            color={activeTab === 'seguridad' ? '#4CAF50' : '#555'}
+          />
           <Text
             style={[
               styles.navButtonText,
@@ -386,6 +378,7 @@ const Perfil = () => {
             style={styles.input}
             onChangeText={setEmail}
             keyboardType="email-address"
+            autoCapitalize="none"
           />
           <TextInput
             placeholder="Nueva Dirección"
@@ -520,10 +513,15 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   infoContainer: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#fff',
     padding: 16,
     borderRadius: 8,
     marginBottom: 16,
+    elevation: 2, // Sombra para Android
+    shadowColor: '#000', // Sombra para iOS
+    shadowOffset: { width: 0, height: 2 }, // Sombra para iOS
+    shadowOpacity: 0.1, // Sombra para iOS
+    shadowRadius: 4, // Sombra para iOS
   },
   infoText: {
     fontSize: 16,
